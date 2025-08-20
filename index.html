@@ -1,0 +1,483 @@
+<body>
+    <h1>SafeStep: Your Digital Bodyguard</h1>
+
+    <!-- ---------------- SOS Section ---------------- -->
+    <section>
+        <button onclick="sendSOS()">🚨 SOS</button>
+        <button onclick="startListening()">🎤 Activate Voice SOS</button>
+
+        <p id="status"></p>
+        <p id="coords"></p>
+    </section>
+    <hr>
+
+    <!-- ---------------- Contacts Section ---------------- -->
+    <section>
+        <h2>Emergency Contacts</h2>
+        {% if message %}
+            <p style="color:green;">{{ message }}</p>
+        {% endif %}
+        <form method="POST" action="/save_contacts">
+            <label>Contact 1:</label>
+            <input type="text" name="contact1" placeholder="Enter phone number" value="{{ contacts[0] if contacts|length > 0 else '' }}"><br><br>
+
+            <label>Contact 2:</label>
+            <input type="text" name="contact2" placeholder="Enter phone number" value="{{ contacts[1] if contacts|length > 1 else '' }}"><br><br>
+
+            <label>Contact 3:</label>
+            <input type="text" name="contact3" placeholder="Enter phone number" value="{{ contacts[2] if contacts|length > 2 else '' }}"><br><br>
+
+            <label>Send to Police? (100)</label>
+            <input type="checkbox" name="police" value="100"><br><br>
+
+            <label>Send to Ambulance? (108)</label>
+            <input type="checkbox" name="ambulance" value="108"><br><br>
+
+            <button type="submit">Save Contacts</button>
+        </form>
+    </section>
+
+    <script>
+        function sendSOS() {
+            document.getElementById("status").innerText = "Getting your location...";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        let lat = position.coords.latitude;
+                        let lon = position.coords.longitude;
+                        
+                        document.getElementById("status").innerText = "✅ Location received!";
+                        document.getElementById("coords").innerText = `Latitude: ${lat}, Longitude: ${lon}`;
+                        
+                        // Send to backend
+                        fetch('/sos', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ latitude: lat, longitude: lon })
+                        });
+                    },
+                    function(error) {
+                        document.getElementById("status").innerText = "❌ Unable to get location.";
+                    }
+                );
+            } else {
+                document.getElementById("status").innerText = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function startListening() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Your browser doesn't support voice recognition.");
+                return;
+            }
+
+            let recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            document.getElementById("status").innerText = "🎤 Listening for 'SOS' or 'Help'...";
+
+            recognition.onresult = function(event) {
+                let transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                console.log("Heard:", transcript);
+                if (transcript.includes("sos") || transcript.includes("help")) {
+                    recognition.stop();
+                    sendSOS();
+                }
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById("status").innerText = "❌ Voice recognition error: " + event.error;
+            };
+
+            recognition.start();
+        }
+    </script>
+</body>
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SafeStep - Fake Call</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: left;
+      margin-top: 50px;
+    }
+    #fakeCallScreen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgb(242, 238, 238);
+      color: rgb(32, 30, 30);
+      text-align: center;
+      padding-top: 150px;
+    }
+    #callerName {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .green { background: green; color: white; }
+    .red { background: red; color: white; }
+  </style>
+</head>
+<body>
+  <h2>SafeStep Fake Call Demo</h2>
+  <button class="btn green" onclick="triggerFakeCall()">Start Fake Call</button>
+
+  <!-- Fake Call Screen -->
+  <div id="fakeCallScreen">
+    <div id="callerName">Dad</div>
+    <audio id="ringtone" src="ringtone.mp3" loop></audio>
+    <button class="btn green" onclick="answerCall()">Answer</button>
+    <button class="btn red" onclick="declineCall()">Decline</button>
+  </div>
+
+  <!-- Voice Message -->
+  <audio id="voiceMessage" src="voice.mp3" loop></audio>
+  
+  <!-- Ringtone -->
+<audio id="ringtone" src="{{ url_for('static', filename='ringtone.mp3') }}"></audio>
+
+<!-- Dad Voice -->
+<audio id="dadVoice" src="{{ url_for('static', filename='dad_voice.mp3') }}"></audio>
+
+
+</body>
+</html>
+
+
+
+
+<script>
+    function triggerFakeCall() {
+      setTimeout(() => {
+        document.getElementById("fakeCallScreen").style.display = "block";
+        document.getElementById("ringtone").play();
+      }, 1000); // Call appears after 3 seconds
+    }
+
+    function answerCall() {
+      document.getElementById("ringtone").pause();
+      document.getElementById("voiceMessage").play();
+      document.getElementById("callerName").innerText = "Dad (On Call)";
+    }
+
+    function declineCall() {
+      document.getElementById("ringtone").pause();
+      document.getElementById("fakeCallScreen").style.display = "none";
+
+    }
+</script>
+
+
+<script>
+let ringtone; 
+
+function startFakeCall() {
+    // Make sure the audio object is created only once
+    ringtone = new Audio("iphone/ringtone.mp3"); 
+    ringtone.loop = true;  // keep ringing until answered/rejected
+
+    ringtone.play().catch((error) => {
+        console.log("❌ Ringtone play failed:", error);
+    });
+
+    document.getElementById("fakeCallScreen").style.display = "block";
+}
+
+function answerCall() {
+    if (ringtone) ringtone.pause();
+    // start dad's voice
+    let dadVoice = new Audio("iphone/dad_voice.mp3");
+    dad_voice.play();
+}
+
+function rejectCall() {
+    if (ringtone) ringtone.pause();
+    document.getElementById("fakeCallScreen").style.display = "none";
+}
+</script>
+
+
+
+
+<script>
+    function startFakeCall() {
+    let ringtone = document.getElementById("ringtone");
+    ringtone.loop = true;
+
+    ringtone.play().catch(err => {
+        console.log("Ringtone blocked by browser, user must interact first:", err);
+        alert("Tap the screen once to allow sound.");
+    });
+
+    document.getElementById("answerBtn").style.display = "inline-block";
+    document.getElementById("endBtn").style.display = "none";
+}
+
+function answerCall() {
+    let ringtone = document.getElementById("ringtone");
+    let dadVoice = document.getElementById("dadVoice");
+
+    ringtone.pause();
+    ringtone.currentTime = 0;
+
+    dadVoice.play().catch(err => {
+        console.log("Dad voice blocked:", err);
+        alert("Tap the screen again to allow dad’s voice.");
+    });
+
+    document.getElementById("answerBtn").style.display = "none";
+    document.getElementById("endBtn").style.display = "inline-block";
+}
+
+function endCall() {
+    let ringtone = document.getElementById("ringtone");
+    let dadVoice = document.getElementById("dadVoice");
+
+    ringtone.pause();
+    ringtone.currentTime = 0;
+
+    dadVoice.pause();
+    dadVoice.currentTime = 0;
+
+    document.getElementById("answerBtn").style.display = "none";
+    document.getElementById("endBtn").style.display = "none";
+}
+</script>
+
+
+
+
+
+
+
+<div class="feature-box">
+    <h2>📍 Live Location</h2>
+    <button onclick="shareLocation()">Share My Location</button>
+    <p id="locationStatus"></p>
+</div>
+<script>
+    function shareLocation() {
+    let status = document.getElementById("locationStatus");
+
+    if (navigator.geolocation) {
+        status.innerHTML = "Fetching location...";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                let lat = position.coords.latitude;
+                let lon = position.coords.longitude;
+                let googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+
+                status.innerHTML = `
+                    ✅ Location fetched! <br>
+                    <a href="${googleMapsLink}" target="_blank">Open in Google Maps</a>
+                `;
+
+                // 📩 Next: send this location via SMS/WhatsApp
+                sendLocationToContact(googleMapsLink);
+            },
+            () => {
+                status.innerHTML = "❌ Unable to fetch location.";
+            }
+        );
+    } else {
+        status.innerHTML = "❌ Geolocation not supported.";
+    }
+}
+
+function sendLocationToContact(link) {
+    // ✅ For WhatsApp
+    let whatsappUrl = `https://api.whatsapp.com/send?phone=+917975068925&text=I%20need%20help!%20My%20location:%20${encodeURIComponent(link)}`;
+    window.open(whatsappUrl, "_blank");
+
+    // 📩 If SMS gateway / Flask backend is available, we can also send SMS
+}
+</script>
+
+
+
+
+
+
+
+
+
+<button id="sosEvidenceBtn" style="background:rgb(106, 101, 101); color:white; padding:10px;">
+    🚨 SOS + Evidence
+</button>
+<p id="status"></p>
+<script src="script.js"></script>
+
+
+
+
+<hr>
+
+<label style="display:inline-flex;align-items:center;gap:8px;margin:8px 0;">
+  <input type="checkbox" id="useCommunity" checked>
+  Also alert nearby SafeStep helpers
+</label>
+
+<div style="margin:8px 0;">
+  <button id="testCommunityBtn" type="button">🔔 Test Community Help</button>
+</div>
+
+<div id="communityPanel" style="border:1px solid #ddd; padding:12px; border-radius:8px; display:none;">
+  <h3 style="margin-top:0;">🚨 Community Help</h3>
+  <p id="communityStatus">Preparing…</p>
+  <ul id="communityList" style="padding-left:20px;"></ul>
+  <p id="communityMapLink"></p>
+</div>
+
+
+
+
+<script>
+    // ---- Get current location as a Promise ----
+function getCurrentLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject("Geolocation not supported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        });
+      },
+      (err) => reject(err.message),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  });
+}
+
+// ---- Render Community Help panel ----
+function renderCommunityPanel(payload) {
+  const panel = document.getElementById("communityPanel");
+  const status = document.getElementById("communityStatus");
+  const list = document.getElementById("communityList");
+  const mapLink = document.getElementById("communityMapLink");
+
+  panel.style.display = "block";
+  list.innerHTML = "";
+  status.textContent = payload.message || "Community help triggered.";
+
+  (payload.responders || []).forEach(r => {
+    const li = document.createElement("li");
+    li.textContent = 👤 ${r.name} — ${r.distance_km} km away — ETA ~ ${r.eta_min} min;
+    list.appendChild(li);
+  });
+
+  if (payload.maps_url) {
+    mapLink.innerHTML = 📍 <a href="${payload.maps_url}" target="_blank" rel="noreferrer">View location on Google Maps</a>;
+  } else {
+    mapLink.textContent = "";
+  }
+}
+
+// ---- Trigger Community Help (calls Flask) ----
+async function triggerCommunityHelp(lat, lon) {
+  const body = {};
+  if (lat && lon) {
+    body.latitude = lat;
+    body.longitude = lon;
+  }
+  const res = await fetch("/community_help", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  renderCommunityPanel(data);
+}
+
+// ---- Wire up the Test button ----
+const testBtn = document.getElementById("testCommunityBtn");
+if (testBtn) {
+  testBtn.addEventListener("click", async () => {
+    // try to use real location (optional)
+    try {
+      const { latitude, longitude } = await getCurrentLocation();
+      await triggerCommunityHelp(latitude, longitude);
+    } catch (e) {
+      // fallback without location
+      await triggerCommunityHelp();
+    }
+  });
+}
+
+// ---- OPTIONAL: Hook Community Help to your SOS flow ----
+// If you have a function where you already send SOS, after SOS succeeds, add:
+// if (document.getElementById("useCommunity")?.checked) {
+//   const pos = await getCurrentLocation().catch(()=>null);
+//   await triggerCommunityHelp(pos?.latitude, pos?.longitude);
+// }
+</script>
+
+
+
+
+
+
+
+
+
+<hr>
+<label>
+  <input type="checkbox" id="useCommunity" checked>
+  Also alert nearby SafeStep helpers
+</label>
+
+<div style="margin:8px 0;">
+  <button id="testCommunityBtn" type="button">🔔 Test Community Help</button>
+</div>
+
+<div id="communityOutput" style="margin-top:10px; font-weight:bold; color:darkred;"></div>
+<script>
+    const testBtn = document.getElementById("testCommunityBtn");
+if (testBtn) {
+  testBtn.addEventListener("click", async () => {
+    const res = await fetch("/community_help", { method: "POST" });
+    const data = await res.json();
+
+    const output = document.getElementById("communityOutput");
+    output.innerHTML = "";
+
+    if (data.responders && data.responders.length > 0) {
+      data.responders.forEach(r => {
+        const line = document.createElement("div");
+        line.textContent = ${r.name} is ${r.distance} away;
+        output.appendChild(line);
+      });
+    } else {
+      output.textContent = "No helpers nearby right now.";
+    }
+  });
+}
+</script>
